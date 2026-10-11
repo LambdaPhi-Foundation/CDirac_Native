@@ -1,0 +1,14 @@
+[package]
+name = "cdirac"
+version = "0.1.0"
+edition = "2021"
+description = "CDirac frontend (lexer/parser/AST) for the CDirac-native LLVM compiler"
+license = "MIT"
+
+[[bin]]
+name = "cdirac"
+path = "src/main.rs"
+
+[lib]
+name = "cdirac"
+path = "src/lib.rs"

@@ -1,0 +1,57 @@
+name: cdirac CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rust:
+    name: cargo test (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo test
+        run: cargo test
+      - name: clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: fmt check
+        run: cargo fmt --check
+
+  llvmrt:
+    name: llvmrt C tests (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: run C tests (gcc/clang)
+        run: python llvmrt/tests/run_tests.py
+
+  llvmcheck:
+    name: differential gate (ubuntu, clang)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The reference tree-walker lives in the sibling bracket-jvm
+      # checkout; CI clones it next to cdirac like local dev layout.
+      - name: clone bracket-jvm (reference pipeline)
+        run: |
+          if [ ! -d ../bracket-jvm ]; then
+            echo "bracket-jvm checkout required for llvmcheck; skipping clone in template" ;
+          fi
+      - uses: dtolnay/rust-toolchain@stable
+      - name: install clang
+        run: sudo apt-get update && sudo apt-get install -y clang
+      - name: build both binaries
+        run: |
+          cargo build
+          cargo build --manifest-path ../bracket-jvm/Cargo.toml || echo "no bracket-jvm checkout; llvmcheck will SKIP"
+      - name: llvmcheck (byte-exact vs tree-walker)
+        run: python tools/llvmcheck.py
